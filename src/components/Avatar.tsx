@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Member, StatusUser } from "../types/chat";
 
 interface AvatarProps {
@@ -6,7 +5,6 @@ interface AvatarProps {
 };
 
 const Avatar: React.FC<AvatarProps> = ({ user }) => {
-    console.log(user)
 
     return (
         <div className="relative">

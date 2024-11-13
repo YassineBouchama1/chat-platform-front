@@ -139,7 +139,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const handleAcceptCall = async () => {
-
+        console.log(incomingCall)
         if (!incomingCall) return;
         console.log('accept call')
 

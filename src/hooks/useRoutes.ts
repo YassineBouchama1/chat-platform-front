@@ -37,10 +37,10 @@ const useRoutes = (): Route[] => {
                 active: pathname === '/chat',
             },
             {
-                label: 'Friends',
-                href: '/friends',
+                label: 'Users',
+                href: '/Users',
                 icon: HiUsers,
-                active: pathname === '/friends',
+                active: pathname === '/Users',
             },
             {
                 label: 'Logout',

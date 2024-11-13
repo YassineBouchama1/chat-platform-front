@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { FaWifi } from 'react-icons/fa';
 
 interface NetworkStatusProps {
-    peerConnection: RTCPeerConnection;
+    peerConnection: RTCPeerConnection | undefined;
 }
 
 const NetworkStatus: React.FC<NetworkStatusProps> = ({ peerConnection }) => {
     const [quality, setQuality] = useState<'good' | 'medium' | 'poor'>('good');
     const [latency, setLatency] = useState<number>(0);
 
+    if (!peerConnection) return <div>Error on NetworkStatus</div>
     useEffect(() => {
         const interval = setInterval(async () => {
             const stats = await peerConnection.getStats();

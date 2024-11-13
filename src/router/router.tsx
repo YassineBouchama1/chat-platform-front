@@ -4,6 +4,7 @@ import MainLayout from '../layouts/MainLayout';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 import ChatList from '../features/chats/components/ChatList';
+import UserList from '../features/ListUsers/components/UserList';
 
 export const router = createBrowserRouter([
     {
@@ -25,15 +26,15 @@ export const router = createBrowserRouter([
                     {
                         path: 'chat/:chatId?',
                         element: <ChatList
-                           
+
 
 
                         />,
                     },
 
                     {
-                        path: 'friends',
-                        element: <div>friends</div>,
+                        path: 'Users',
+                        element: <UserList />,
                     },
                 ],
             },
