@@ -1,3 +1,5 @@
+// useWebRTC.ts
+
 import { useState, useEffect, useRef } from 'react';
 import { useSocket } from '../providers/SocketProvider';
 import { toast } from 'react-hot-toast';
@@ -13,25 +15,55 @@ export const useWebRTC = (chatId: string, type: 'video' | 'audio') => {
     const webRTCServiceRef = useRef<WebRTCService | null>(null);
 
     useEffect(() => {
+        let isMounted = true; // To prevent state updates after unmount
         const webRTCService = new WebRTCService(socket, chatId);
         webRTCServiceRef.current = webRTCService;
 
         const initializeCall = async () => {
             try {
-                const stream = await webRTCService.initializeLocalStream(type === 'video');
-                const localUserId = socket.id;
+                const isVideo = type === 'video';
+                const stream = await webRTCService.initializeLocalStream(isVideo);
 
-                setParticipants(new Map([
-                    [localUserId, {
-                        userId: localUserId,
-                        username: 'You',
-                        stream,
-                        muted: false,
-                        videoOff: false,
-                    }],
-                ]));
+                // Wait until socket.id is defined
+                const waitForSocketId = () => {
+                    return new Promise<string>((resolve, reject) => {
+                        if (socket.id) {
+                            resolve(socket.id);
+                        } else {
+                            socket.on('connect', () => {
+                                if (socket.id) {
+                                    resolve(socket.id);
+                                } else {
+                                    reject('Socket ID is undefined after connect event.');
+                                }
+                            });
+                        }
+                    });
+                };
+
+                const localUserId = await waitForSocketId();
+
+                if (!isMounted) return; // Check if component is still mounted
+
+                setParticipants(
+                    new Map([
+                        [
+                            localUserId,
+                            {
+                                userId: localUserId,
+                                username: 'You',
+                                stream,
+                                muted: false,
+                                videoOff: false,
+                            },
+                        ],
+                    ])
+                );
 
                 setupSocketListeners();
+
+                // Notify the server that you've joined the call
+                socket.emit('joinCall', { chatId, userId: localUserId });
             } catch (error) {
                 console.error('Error initializing call:', error);
                 toast.error('Failed to access camera/microphone');
@@ -44,19 +76,22 @@ export const useWebRTC = (chatId: string, type: 'video' | 'audio') => {
             socket.on('answer', handleAnswer);
             socket.on('ice-candidate', handleIceCandidate);
             socket.on('userLeftCall', handleUserLeft);
-            socket.on('participantToggleAudio', handleParticipantToggleAudio);
-            socket.on('participantToggleVideo', handleParticipantToggleVideo);
+
+            // socket.on('participantToggleAudio', handleParticipantToggleAudio);
+            // socket.on('participantToggleVideo', handleParticipantToggleVideo);
         };
 
+        // Initialize the call when the component mounts
         initializeCall();
 
         return () => {
+            isMounted = false;
             webRTCService.cleanup();
-            socket.off('userJoinedCall');
-            socket.off('offer');
-            socket.off('answer');
-            socket.off('ice-candidate');
-            socket.off('userLeftCall');
+            socket.off('userJoinedCall', handleUserJoined);
+            socket.off('offer', handleOffer);
+            socket.off('answer', handleAnswer);
+            socket.off('ice-candidate', handleIceCandidate);
+            socket.off('userLeftCall', handleUserLeft);
             socket.off('participantToggleAudio');
             socket.off('participantToggleVideo');
         };
@@ -64,17 +99,31 @@ export const useWebRTC = (chatId: string, type: 'video' | 'audio') => {
 
     const handleUserJoined = async ({ userId, username }: { userId: string; username: string }) => {
         try {
+            if (!userId || !username) {
+                console.error('Received invalid user data:', { userId, username });
+                return;
+            }
+
             const webRTCService = webRTCServiceRef.current;
             if (!webRTCService) return;
 
             const peerConnection = await webRTCService.createPeerConnection(
                 userId,
                 (userId, stream) => {
-                    setParticipants(prev => {
+                    setParticipants((prev) => {
                         const updated = new Map(prev);
                         const participant = updated.get(userId);
                         if (participant) {
                             updated.set(userId, { ...participant, stream });
+                        } else {
+                            // If participant doesn't exist yet, add them
+                            updated.set(userId, {
+                                userId,
+                                username,
+                                stream,
+                                muted: false,
+                                videoOff: false,
+                            });
                         }
                         return updated;
                     });
@@ -92,10 +141,10 @@ export const useWebRTC = (chatId: string, type: 'video' | 'audio') => {
             socket.emit('offer', {
                 chatId,
                 targetUserId: userId,
-                offer,
+                offer: peerConnection.localDescription,
             });
 
-            setParticipants(prev => {
+            setParticipants((prev) => {
                 const updated = new Map(prev);
                 updated.set(userId, {
                     userId,
@@ -113,20 +162,65 @@ export const useWebRTC = (chatId: string, type: 'video' | 'audio') => {
         }
     };
 
-    const handleOffer = async ({ userId, offer }: { userId: string; offer: RTCSessionDescription }) => {
+    const handleOffer = async ({ userId, offer }: { userId: string; offer: RTCSessionDescriptionInit }) => {
         try {
+            if (!userId || !offer) {
+                console.error('Received invalid offer data:', { userId, offer });
+                return;
+            }
+
             const webRTCService = webRTCServiceRef.current;
             if (!webRTCService) return;
 
-            await webRTCService.handleOffer(userId, offer);
+            // Ensure local stream is initialized before handling the offer
+            if (!webRTCService.localStream) {
+                console.warn('Local stream not initialized, initializing now');
+                await webRTCService.initializeLocalStream(type === 'video');
+            }
+
+            await webRTCService.handleOffer(
+                userId,
+                offer,
+                (userId, stream) => {
+                    setParticipants((prev) => {
+                        const updated = new Map(prev);
+                        const participant = updated.get(userId);
+                        if (participant) {
+                            updated.set(userId, { ...participant, stream });
+                        } else {
+                            // If participant doesn't exist yet, add them
+                            updated.set(userId, {
+                                userId,
+                                username: 'Participant',
+                                stream,
+                                muted: false,
+                                videoOff: false,
+                            });
+                        }
+                        return updated;
+                    });
+                },
+                (state) => {
+                    if (state === 'connected') {
+                        setIsConnecting(false);
+                    }
+                }
+            );
+
+            // Optionally, update your UI to reflect the new participant
         } catch (error) {
             console.error('Error handling offer:', error);
             toast.error('Failed to establish connection');
         }
     };
 
-    const handleAnswer = async ({ userId, answer }: { userId: string; answer: RTCSessionDescription }) => {
+    const handleAnswer = async ({ userId, answer }: { userId: string; answer: RTCSessionDescriptionInit }) => {
         try {
+            if (!userId || !answer) {
+                console.error('Received invalid answer data:', { userId, answer });
+                return;
+            }
+
             const webRTCService = webRTCServiceRef.current;
             if (!webRTCService) return;
 
@@ -137,8 +231,13 @@ export const useWebRTC = (chatId: string, type: 'video' | 'audio') => {
         }
     };
 
-    const handleIceCandidate = async ({ userId, candidate }: { userId: string; candidate: RTCIceCandidate }) => {
+    const handleIceCandidate = async ({ userId, candidate }: { userId: string; candidate: RTCIceCandidateInit }) => {
         try {
+            if (!userId || !candidate) {
+                console.error('Received invalid ICE candidate data:', { userId, candidate });
+                return;
+            }
+
             const webRTCService = webRTCServiceRef.current;
             if (!webRTCService) return;
 
@@ -149,40 +248,23 @@ export const useWebRTC = (chatId: string, type: 'video' | 'audio') => {
     };
 
     const handleUserLeft = ({ userId, username }: { userId: string; username: string }) => {
+        if (!userId) {
+            console.error('Received invalid user data on userLeft:', { userId, username });
+            return;
+        }
+
         const webRTCService = webRTCServiceRef.current;
         if (!webRTCService) return;
 
         webRTCService.removeConnection(userId);
 
-        setParticipants(prev => {
+        setParticipants((prev) => {
             const updated = new Map(prev);
             updated.delete(userId);
             return updated;
         });
 
-        toast.error(`${username} left the call`);
-    };
-
-    const handleParticipantToggleAudio = ({ userId, muted }: { userId: string; muted: boolean }) => {
-        setParticipants(prev => {
-            const updated = new Map(prev);
-            const participant = updated.get(userId);
-            if (participant) {
-                updated.set(userId, { ...participant, muted });
-            }
-            return updated;
-        });
-    };
-
-    const handleParticipantToggleVideo = ({ userId, videoOff }: { userId: string; videoOff: boolean }) => {
-        setParticipants(prev => {
-            const updated = new Map(prev);
-            const participant = updated.get(userId);
-            if (participant) {
-                updated.set(userId, { ...participant, videoOff });
-            }
-            return updated;
-        });
+        toast.error(`${username || 'A user'} left the call`);
     };
 
     const toggleAudio = () => {
@@ -205,8 +287,8 @@ export const useWebRTC = (chatId: string, type: 'video' | 'audio') => {
         const webRTCService = webRTCServiceRef.current;
         if (webRTCService) {
             webRTCService.cleanup();
-            socket.emit('leaveCall', { chatId });
         }
+        socket.emit('leaveCall', { chatId });
     };
 
     return {

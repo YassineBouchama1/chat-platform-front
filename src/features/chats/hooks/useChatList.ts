@@ -36,7 +36,7 @@ const useChatList = () => {
         isModalOpen,
         openModal,
         closeModal,
-       
+
     };
 };
 

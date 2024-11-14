@@ -1,27 +1,13 @@
 
-import { useQuery } from "@tanstack/react-query";
-import { Member } from "../../../types/chat";
-import axiosInstance from "../../../utils/axiosInstance";
-
-
-const fetchUsers = async (): Promise<Member[]> => {
-    const response = await axiosInstance.get<Member[]>('/user');
-    return response.data;
-};
-
-
-
-
-
+import { useGetUsersQuery } from '../../../services/apis/usersApiSlice';
 
 const useListUsers = () => {
-
-    const { data: users, isLoading, error } = useQuery<Member[], Error>({
-        queryKey: ['users'],
-        queryFn: fetchUsers,
-        staleTime: 1000 * 60 * 5,
-    });
-
+    const {
+        data: users,
+        isLoading,
+        error,
+        refetch
+    } = useGetUsersQuery();
 
 
 
@@ -29,8 +15,7 @@ const useListUsers = () => {
         users,
         isLoading,
         error,
-
-
+        refetch
     };
 };
 

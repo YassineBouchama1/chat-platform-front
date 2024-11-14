@@ -31,6 +31,25 @@ export interface Chat {
     lastMessage?: string;
 }
 
+
+export interface NewChatData {
+    type?: 'PUBLIC' | 'PRIVATE';
+    isPrivate?: boolean;
+    isSafeMode?: boolean;
+    name?: string;
+    owner?: string;
+    members?: Member[];
+    moderators?: Member[];
+    bannedWords?: string[];
+    isGroup?: boolean;
+}
+
+export interface UpdateChatData extends Partial<NewChatData> {
+
+    id: string
+}
+
+
 export type ChatResponse = Chat[];
 
 

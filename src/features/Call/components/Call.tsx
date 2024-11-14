@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FaExpandAlt, FaCompress } from 'react-icons/fa';
 import CallControls from './CallControls';
 import ParticipantGrid from './ParticipantGrid';
@@ -26,6 +26,12 @@ const Call: React.FC<CallProps> = ({ chatId, type, onClose }) => {
         leaveCall,
     } = useWebRTC(chatId, type);
 
+
+    useEffect(() => {
+        console.log('Connection status:', isConnecting);
+        console.log('Participants:', Array.from(participants.entries()));
+    }, [isConnecting, participants]);
+
     const toggleFullScreen = () => {
         if (!document.fullscreenElement) {
             callContainerRef.current?.requestFullscreen();
@@ -42,6 +48,8 @@ const Call: React.FC<CallProps> = ({ chatId, type, onClose }) => {
         onClose();
     };
 
+
+    console.log(participants)
     return (
         <div
             ref={callContainerRef}

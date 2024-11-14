@@ -2,26 +2,30 @@ import { useCallback, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { FiLoader } from 'react-icons/fi';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from 'react-router-dom';
 import Input from '../../../components/inputs/Input';
 import Button from '../../../components/Button';
 import { LoginFormType, loginSchema } from '../validations/loginSchema';
 import { RegisterFormType, registerSchema } from '../validations/registerSchema';
-import { useNavigate } from 'react-router-dom';
-import { loginService, RegisterData, registerService } from '../../../services/auth/authService';
+import { useLoginMutation, useRegisterMutation } from '../../../services/apis/authApiSlice';
 import { useAuth } from '../../../providers/AuthProvider';
-
+import toast from 'react-hot-toast';
 
 type Variant = 'LOGIN' | 'REGISTER';
 
 const AuthForm = () => {
     const [variant, setVariant] = useState<Variant>('LOGIN');
-    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
-
     const { login: loginContext } = useAuth();
 
+    // THIS IS a RTK Query mutations
+    const [login, { isLoading: isLoginLoading }] = useLoginMutation();
+    const [register, { isLoading: isRegisterLoading }] = useRegisterMutation();
+
+    const isLoading = isLoginLoading || isRegisterLoading;
+
     const {
-        register,
+        register: registerForm,
         handleSubmit,
         formState: { errors },
         reset,
@@ -34,38 +38,29 @@ const AuthForm = () => {
         setVariant((prev) => (prev === 'LOGIN' ? 'REGISTER' : 'LOGIN'));
     }, [reset]);
 
-
-
-    // Example of loginService response handling
     const onSubmit: SubmitHandler<LoginFormType | RegisterFormType> = async (data) => {
-        setIsLoading(true);
         try {
             if (variant === 'LOGIN') {
-                const response = await loginService(data as LoginFormType);
-
-                const user = response?.user;
-                if (user) {
-                    loginContext(response.token, user);
+                const response = await login(data as LoginFormType).unwrap();
+                console.log(response)
+                if (response?.user) {
+                    loginContext(response.token, response.user);
                     navigate('/');
                 } else {
                     throw new Error('User data is missing');
                 }
             } else {
                 const { email, password, username } = data as RegisterFormType;
-                const registerData: RegisterData = { email, password, username };
-                const response = await registerService(registerData);
+                const response = await register({ email, password, username }).unwrap();
                 console.log(response);
-
-                setVariant("LOGIN")
+                toast.success('Regester Succssfully')
+                setVariant('LOGIN');
             }
         } catch (error: any) {
-            console.error(error.message || 'Authentication failed');
-            alert(error.message || 'Authentication failed');
-        } finally {
-            setIsLoading(false);
+            console.error(error?.data?.message || error.message || 'Authentication failed');
+            alert(error?.data?.message || error.message || 'Authentication failed');
         }
     };
-
 
 
 
@@ -81,7 +76,7 @@ const AuthForm = () => {
                     {variant === 'REGISTER' && (
                         <Input
                             disabled={isLoading}
-                            register={register}
+                            register={registerForm}
                             errors={errors}
                             required={false}
                             id='username'
@@ -91,7 +86,7 @@ const AuthForm = () => {
 
                     <Input
                         disabled={isLoading}
-                        register={register}
+                        register={registerForm}
                         errors={errors}
                         required={true}
                         id='email'
@@ -100,7 +95,7 @@ const AuthForm = () => {
                     />
                     <Input
                         disabled={isLoading}
-                        register={register}
+                        register={registerForm}
                         errors={errors}
                         required={true}
                         id='password'
@@ -112,7 +107,7 @@ const AuthForm = () => {
                     {variant === 'REGISTER' && (
                         <Input
                             disabled={isLoading}
-                            register={register}
+                            register={registerForm}
                             errors={errors}
                             required={true}
                             id='confirmPassword'

@@ -18,14 +18,15 @@ interface IncomingCall {
 
 interface CallContextType {
     initiateCall: (chatId: string, type: 'video' | 'audio') => void;
-    acceptCall: (chatId: string, callerId: string) => void;
-    rejectCall: (chatId: string, callerId: string) => void;
+    acceptCall: (callData?: IncomingCall) => void;
+    rejectCall: (callData?: IncomingCall) => void;
     endCall: () => void;
     isCallInitiating: boolean;
     activeCall: ActiveCall | null;
     incomingCall: IncomingCall | null;
 }
 
+// This context is used to manage call state and handle incoming calls.
 const CallContext = createContext<CallContextType | undefined>(undefined);
 
 export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -34,21 +35,85 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
     const [isCallInitiating, setIsCallInitiating] = useState(false);
 
-    // Handle incoming calls
+    // Function to handle accepting a call
+    const handleAcceptCall = async (callData?: IncomingCall) => {
+        const data = callData || incomingCall;
+        console.log('Accept call:', data);
+        if (!data) return;
+
+        try {
+            // Request access to the user's media devices
+            const constraints: MediaStreamConstraints = {
+                audio: true,
+                video: data.type === 'video', // Request video only if type is 'video'
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            // Notify the caller that the call has been accepted
+            socket.emit('acceptCall', {
+                chatId: data.chatId,
+                callerId: data.callerId,
+            });
+
+            // Update the active call state
+            setActiveCall({
+                type: data.type,
+                chatId: data.chatId,
+            });
+
+            // Clear the incoming call state
+            setIncomingCall(null);
+        } catch (error) {
+            console.error('Error accepting call:', error);
+            toast.error('Failed to accept call: Please check your camera/microphone permissions');
+
+
+            // Notify the caller that the call was rejected due to permission issues
+            socket.emit('rejectCall', {
+                chatId: data.chatId,
+                callerId: data.callerId,
+                reason: 'permission_denied',
+            });
+
+            // Clear the incoming call state
+            setIncomingCall(null);
+        }
+    };
+
+    // Function to handle rejecting a call
+    const handleRejectCall = (callData?: IncomingCall) => {
+        const data = callData || incomingCall;
+        if (data) {
+            // Notify the caller that the call has been rejected
+            socket.emit('rejectCall', {
+                chatId: data.chatId,
+                callerId: data.callerId,
+            });
+
+            // Clear the incoming call state
+            setIncomingCall(null);
+        }
+    };
+
+    // Handle incoming calls and other call-related socket events
     React.useEffect(() => {
         const handleIncomingCall = (data: IncomingCall) => {
             console.log('Incoming call:', data);
             if (activeCall) {
+                // If already in an active call, reject the new call
                 socket.emit('rejectCall', {
                     chatId: data.chatId,
                     callerId: data.callerId,
-                    reason: 'busy'
+                    reason: 'busy',
                 });
                 return;
             }
+
+            // Set the incoming call data
             setIncomingCall(data);
 
-            // Show call notification
+            // Show call notification with accept and reject options
             toast.custom(
                 (t) => (
                     <CallNotification
@@ -56,11 +121,11 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         callType={data.type}
                         onAccept={() => {
                             toast.dismiss(t.id);
-                            handleAcceptCall();
+                            handleAcceptCall(data);
                         }}
                         onReject={() => {
                             toast.dismiss(t.id);
-                            handleRejectCall();
+                            handleRejectCall(data);
                         }}
                     />
                 ),
@@ -81,7 +146,10 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('Call rejected by:', data.username);
             setIsCallInitiating(false);
             setActiveCall(null);
-            toast.error(`${data.username} ${data.reason === 'busy' ? 'is busy' : 'rejected the call'}`);
+            toast.error(
+                `${data.username} ${data.reason === 'busy' ? 'is busy' : data.reason === 'permission_denied' ? 'cannot accept the call' : 'rejected the call'
+                }`
+            );
         };
 
         const handleCallEnded = (data: { userId: string; username: string }) => {
@@ -97,13 +165,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
             toast.error(`Call error: ${error.message}`);
         };
 
-        // Socket listeners
+        // Register socket event listeners
         socket.on('incomingCall', handleIncomingCall);
         socket.on('callAccepted', handleCallAccepted);
         socket.on('callRejected', handleCallRejected);
         socket.on('callEnded', handleCallEnded);
         socket.on('callError', handleCallError);
 
+        // Cleanup event listeners on unmount
         return () => {
             socket.off('incomingCall', handleIncomingCall);
             socket.off('callAccepted', handleCallAccepted);
@@ -113,6 +182,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [socket, activeCall]);
 
+    // Function to initiate a call
     const initiateCall = async (chatId: string, type: 'video' | 'audio') => {
         if (!chatId) return;
 
@@ -123,13 +193,18 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             setIsCallInitiating(true);
 
+            // Request access to the user's media devices
             await navigator.mediaDevices.getUserMedia({
                 video: type === 'video',
                 audio: true,
             });
 
+            // Notify the server to initiate a call
             socket.emit('initiateCall', { chatId, type });
+
+            // Update the active call state
             setActiveCall({ type, chatId });
+
             toast.success('Initiating call...');
         } catch (error) {
             console.error('Error starting call:', error);
@@ -138,54 +213,15 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const handleAcceptCall = async () => {
-        console.log(incomingCall)
-        if (!incomingCall) return;
-        console.log('accept call')
-
-        try {
-            await navigator.mediaDevices.getUserMedia({
-                video: incomingCall.type === 'video',
-                audio: true,
-            });
-
-            socket.emit('acceptCall', {
-                chatId: incomingCall.chatId,
-                callerId: incomingCall.callerId,
-            });
-
-            setActiveCall({
-                type: incomingCall.type,
-                chatId: incomingCall.chatId
-            });
-            setIncomingCall(null);
-        } catch (error) {
-            console.error('Error accepting call:', error);
-            toast.error('Failed to accept call: Please check your camera/microphone permissions');
-
-            socket.emit('rejectCall', {
-                chatId: incomingCall.chatId,
-                callerId: incomingCall.callerId,
-                reason: 'permission_denied'
-            });
-            setIncomingCall(null);
-        }
-    };
-
-    const handleRejectCall = () => {
-        if (incomingCall) {
-            socket.emit('rejectCall', {
-                chatId: incomingCall.chatId,
-                callerId: incomingCall.callerId,
-            });
-            setIncomingCall(null);
-        }
-    };
-
+    // Function to end the current call
     const endCall = () => {
         if (activeCall) {
+            // Notify the server that the call has ended
             socket.emit('leaveCall', { chatId: activeCall.chatId });
+
+            // Clear the active call state
             setActiveCall(null);
+
             toast.success('Call ended');
         }
     };
@@ -199,10 +235,11 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 endCall,
                 isCallInitiating,
                 activeCall,
-                incomingCall
+                incomingCall,
             }}
         >
             {children}
+            {/* Render the Call component if there is an active call */}
             {activeCall && (
                 <Call
                     chatId={activeCall.chatId}
@@ -214,6 +251,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 };
 
+// Custom hook to access the CallContext
 export const useCall = () => {
     const context = useContext(CallContext);
     if (!context) {

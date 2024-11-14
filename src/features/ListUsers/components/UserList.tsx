@@ -1,4 +1,4 @@
-import useListUsers from "../hooks/useListUsers";
+import { useGetUsersQuery } from "../../../services/apis/usersApiSlice";
 import UserBox from "./UserBox";
 
 
@@ -6,7 +6,18 @@ import UserBox from "./UserBox";
 
 const UserList: React.FC = () => {
 
-    const { users } = useListUsers()
+
+    const {
+        data: users,
+        isLoading,
+        error,
+        refetch
+    } = useGetUsersQuery();
+
+    if (isLoading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error.toString()}</div>;
+
+
     return (
         <aside
             className='

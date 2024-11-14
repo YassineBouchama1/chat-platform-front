@@ -15,6 +15,7 @@ const useChatBody = () => {
         queryKey: ['chatById', chatId],
         queryFn: () => fetchMessages(chatId),
         staleTime: 1000 * 60 * 5,
+
     });
 
     return { isOpen, chatId, chatData, isLoading, error };

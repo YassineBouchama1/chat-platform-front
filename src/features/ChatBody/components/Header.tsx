@@ -54,12 +54,15 @@ const Header: React.FC<HeaderProps> = ({ chat }) => {
                 className="
         bg-white 
         w-full 
+   
         flex 
         border-b-[1px] 
+        z-30
         sm:px-4 
         py-3 
         px-4 
         lg:px-6 
+        static
         justify-between 
         items-center 
         shadow-sm

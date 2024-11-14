@@ -29,7 +29,7 @@ const ChatBody: React.FC = () => {
 
     return (
         <div className="lg:pl-80 h-full w-full">
-            <div className="flex flex-col justify-between flex-1 h-full flex-grow bg-[#DBEAFE] w-full">
+            <div className="flex flex-col justify-between flex-1 h-full flex-grow bg-[#DBEAFE] w-full relative">
                 {chat && <Header chat={chat} />}
                 <MessageBody />
                 <MessageForm />
