@@ -16,7 +16,6 @@ const useMessageActions = () => {
     const { isOpen, chatId } = useCurrentChat();
     const queryClient = useQueryClient();
 
-
     // Send message mutation
     const sendMsgMutation = useMutation({
         mutationFn: (content: string) => sendMessage({ chatId, content }),
@@ -29,7 +28,6 @@ const useMessageActions = () => {
     });
 
     return { isOpen, chatId, loadingSending: sendMsgMutation.isPending, errorSending: sendMsgMutation.error, sendMsgMutation: sendMsgMutation.mutate };
-
 };
 
 export default useMessageActions;
