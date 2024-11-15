@@ -32,7 +32,11 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = () => {
 
     return (
         <>
-            <SettingsModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+<SettingsModal 
+    isOpen={isOpen} 
+    onClose={() => setIsOpen(false)} 
+    user={currentUser} 
+/>
             <div className="
                 hidden 
                 lg:fixed 
