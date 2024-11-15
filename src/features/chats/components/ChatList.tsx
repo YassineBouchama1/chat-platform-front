@@ -5,9 +5,7 @@ import { MdOutlineGroupAdd } from "react-icons/md";
 import ChatBox from "./ChatBox";
 import useChatList from "../hooks/useChatList";
 
-interface ChatListProps {
-
-}
+interface ChatListProps {}
 
 const ChatList: React.FC<ChatListProps> = () => {
   const {
@@ -23,14 +21,15 @@ const ChatList: React.FC<ChatListProps> = () => {
 
   if (isLoading) return <div>Loading chats...</div>;
   if (error) return <div>Error: {error.message}</div>;
-  if (!chats?.length) return <div>No chats found</div>;
+  // if (!chats?.length) return <div>No chats found</div>;
 
   return (
     <>
-      <GroupChatModal  isOpen={isModalOpen} onClose={closeModal} />
-      <aside
-        className={clsx(
-          `
+
+      <GroupChatModal isOpen={isModalOpen} onClose={closeModal} />
+      {<aside
+          className={clsx(
+            `
         fixed 
         inset-y-0 
         pb-20
@@ -42,15 +41,17 @@ const ChatList: React.FC<ChatListProps> = () => {
         border-r 
         border-gray-200 
       `,
-          isOpen ? "hidden" : "block w-full left-0"
-        )}
-      >
-        <div className="px-5">
-          <div className="flex justify-between mb-4 pt-4">
-            <div className="text-2xl font-bold text-neutral-800">Messages</div>
-            <div
-              onClick={openModal}
-              className="
+            isOpen ? "hidden" : "block w-full left-0"
+          )}
+        >
+          <div className="px-5">
+            <div className="flex justify-between mb-4 pt-4">
+              <div className="text-2xl font-bold text-neutral-800">
+                Messages
+              </div>
+              <div
+                onClick={openModal}
+                className="
                 rounded-full 
                 p-2 
                 bg-gray-100 
@@ -59,15 +60,19 @@ const ChatList: React.FC<ChatListProps> = () => {
                 hover:opacity-75 
                 transition
               "
-            >
-              <MdOutlineGroupAdd size={20} />
+              >
+                <MdOutlineGroupAdd size={20} />
+              </div>
             </div>
+            {chats.map((item) => (
+              <ChatBox
+                key={item._id}
+                chat={item}
+                selected={chatId === item._id}
+              />
+            ))}
           </div>
-          {chats.map((item) => (
-            <ChatBox key={item._id} chat={item} selected={chatId === item._id} />
-          ))}
-        </div>
-      </aside>
+        </aside> }
     </>
   );
 };
