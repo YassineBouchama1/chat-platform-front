@@ -17,13 +17,14 @@ createRoot(document.getElementById('root')!).render(
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
         <SocketProvider>
-          <CallProvider>
 
-            {/* we wappe all app with redux provider */}
-            <StoreProvider>
-              <RouterProvider router={router} />
-            </StoreProvider>
-          </CallProvider>
+            <CallProvider>
+
+              {/* we wappe all app with redux provider */}
+              <StoreProvider>
+                <RouterProvider router={router} />
+              </StoreProvider>
+            </CallProvider>
         </SocketProvider>
       </QueryClientProvider>
     </AuthProvider>

@@ -14,6 +14,8 @@ const UserBox: React.FC<UserBoxProps> = ({
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
 
+
+    
     const handleClick = useCallback(() => {
         setIsLoading(true);
 

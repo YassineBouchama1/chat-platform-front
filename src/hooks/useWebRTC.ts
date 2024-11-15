@@ -1,9 +1,7 @@
-// useWebRTC.ts
-
 import { useState, useEffect, useRef } from 'react';
 import { useSocket } from '../providers/SocketProvider';
 import { toast } from 'react-hot-toast';
-import { Participant, WebRTCService } from '../utils/webRTC';
+import { Participant, WebRTCService } from '../utils/webRTCService';
 
 export const useWebRTC = (chatId: string, type: 'video' | 'audio') => {
     const { socket } = useSocket();

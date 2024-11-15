@@ -23,7 +23,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ chat }) => {
-    const { initiateCall, isCallInitiating, activeCall } = useCall();
+    const { initiateCall } = useCall();
     const otherUser = useOtherUser(chat.members);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const { chatId } = useCurrentChat()
@@ -97,11 +97,7 @@ const Header: React.FC<HeaderProps> = ({ chat }) => {
 
                     <button
                         onClick={() => initiateCall(chatId, 'audio')}
-                        disabled={isCallInitiating || !!activeCall}
-                        className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${isCallInitiating || activeCall
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : 'bg-blue-500 hover:bg-blue-600'
-                            } text-white`}
+
                     >
                         <FaPhone />
                     </button>
@@ -109,11 +105,7 @@ const Header: React.FC<HeaderProps> = ({ chat }) => {
 
                     <button
                         onClick={() => initiateCall(chatId, 'video')}
-                        disabled={isCallInitiating || !!activeCall}
-                        className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${isCallInitiating || activeCall
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : 'bg-blue-500 hover:bg-blue-600'
-                            } text-white`}
+
                     >
                         <FaVideo />
                     </button>
