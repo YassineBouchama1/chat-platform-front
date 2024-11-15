@@ -2,15 +2,16 @@ import { useMemo } from "react";
 import { Member, StatusUser } from "../types/chat";
 
 interface AvatarProps {
-    user?: Member;
-};
+  user?: Member;
+}
 
 const Avatar: React.FC<AvatarProps> = ({ user }) => {
-    console.log(user)
+  console.log(user);
 
-    return (
-        <div className="relative">
-            <div className="
+  return (
+    <div className="relative">
+      <div
+        className="
         relative 
         inline-block 
         rounded-full 
@@ -19,16 +20,17 @@ const Avatar: React.FC<AvatarProps> = ({ user }) => {
         w-9 
         md:h-11 
         md:w-11
-      ">
-                <img
-                    className="w-full h-full"
-                    src={user?.avatar || '/images/placeholder.jpg'}
-                    alt="Avatar"
-                />
-            </div>
-            {user?.status === StatusUser.ONLINE ? (
-                <span
-                    className="
+      "
+      >
+        <img
+          className="w-full h-full"
+          src={user?.avatar || "/images/placeholder.jpg"}
+          alt="Avatar"
+        />
+      </div>
+      {user?.status === StatusUser.ONLINE ? (
+        <span
+          className="
             absolute 
             block 
             rounded-full 
@@ -42,10 +44,10 @@ const Avatar: React.FC<AvatarProps> = ({ user }) => {
             md:h-3 
             md:w-3
           "
-                />
-            ) : null}
-        </div>
-    );
-}
+        />
+      ) : null}
+    </div>
+  );
+};
 
 export default Avatar;
