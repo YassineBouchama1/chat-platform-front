@@ -3,6 +3,7 @@ import MessageBox from "./MessageBox";
 import EmptyState from "../../../components/EmptyState";
 import useMessage from "../hooks/useMessage";
 import { useSocket } from "../../../providers/SocketProvider";
+import { QueryClient } from "@tanstack/react-query";
 
 const MessageBody: React.FC = () => {
     const { isOpen, chatId, messagesData, isLoading, error } = useMessage();
@@ -10,6 +11,8 @@ const MessageBody: React.FC = () => {
     const bottomRef = useRef<HTMLDivElement>(null);
     const { socket } = useSocket();
 
+
+    const queryClient = new QueryClient()
     useEffect(() => {
         setMessages(messagesData);
     }, [messagesData]);
@@ -22,6 +25,8 @@ const MessageBody: React.FC = () => {
             // Listen for new messages
             socket.on('newMessage', ({ message }) => {
                 setMessages((prev) => prev ? [...prev, message] : [message]);
+
+                queryClient.invalidateQueries({ queryKey: ['chats'] });
             });
 
             // cleanup when component unmounts
@@ -42,7 +47,7 @@ const MessageBody: React.FC = () => {
     if (!messages) return null;
 
     return (
-        <div className="flex flex-col overflow-y-auto max-h-[70%]">
+        <div className="flex flex-col overflow-y-auto max-h-[70%] md:pb-0 pb-20">
             {messages.length ? messages.map((message, i) => (
                 <MessageBox
                     isLast={i === messages.length - 1}

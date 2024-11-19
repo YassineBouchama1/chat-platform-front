@@ -38,6 +38,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             // User status events we listn if user connected or not
             socket.on('userConnected', (data) => {
+                console.log('conected')
                 setOnlineUsers(prev => new Set(prev).add(data.userId));
                 queryClient.invalidateQueries({ queryKey: ['chat-members'] });
                 queryClient.invalidateQueries({ queryKey: ['chats'] });
@@ -46,6 +47,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     duration: 3000,
                 });
             });
+
             //we listn if user Disconnected or not
             socket.on('userDisconnected', (data) => {
                 setOnlineUsers(prev => {
@@ -63,7 +65,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             // Initial online users
             socket.on('onlineUsers', (users) => {
-                setOnlineUsers(new Set(users.map((u: { userId: any; }) => u.userId)));
+                setOnlineUsers(new Set(users.map((u: { userId: string; }) => u.userId)));
             });
 
 

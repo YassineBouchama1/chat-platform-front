@@ -20,7 +20,7 @@ const useChatList = () => {
     const { data: chats, isLoading, error } = useQuery<Chat[], Error>({
         queryKey: ['chats'],
         queryFn: fetchChats,
-        staleTime: 1000 * 60 * 5,
+        // staleTime: 1000 * 60 * 5,
     });
     const { chatId, isOpen } = useCurrentChat();
 

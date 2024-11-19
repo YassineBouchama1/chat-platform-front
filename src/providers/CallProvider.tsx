@@ -3,6 +3,7 @@ import { useSocket } from './SocketProvider';
 import { showCallNotification } from '../components/CallNotification';
 import CallInterface from '../components/CallInterface';
 
+// Types and Interfaces
 interface Participant {
     userId: string;
     username: string;
@@ -26,14 +27,54 @@ interface CallContextType {
     toggleVideo: (userId: string) => void;
 }
 
+// Socket event payload types
+interface IncomingCallPayload {
+    chatId: string;
+    callerId: string;
+    callerName: string;
+    type: 'audio' | 'video';
+}
+
+interface CallParticipantPayload {
+    userId: string;
+    username: string;
+}
+
+interface CallResponsePayload {
+    success: boolean;
+    message?: string;
+}
+
+interface ParticipantsUpdatePayload {
+    participants: Array<{
+        userId: string;
+        username: string;
+    }>;
+}
+
+interface UserLeftPayload {
+    userId: string;
+}
+
+// Notification props type
+interface CallNotificationProps {
+    callerName: string;
+    chatId: string;
+    callType: 'audio' | 'video';
+    onAccept: () => void;
+    onReject: () => void;
+}
+
+// Create the context with type safety
 const CallContext = createContext<CallContextType | undefined>(undefined);
 
+// Provider component with proper typing
 export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { socket } = useSocket();
     const [currentCall, setCurrentCall] = useState<CallState | null>(null);
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
-    // Handle media stream cleanup
+    // Cleanup effect for media streams
     useEffect(() => {
         return () => {
             if (localStream) {
@@ -42,53 +83,60 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [localStream]);
 
-    // Socket event handlers
+    // Socket event handlers with proper typing
     useEffect(() => {
-        const handleIncomingCall = async ({ chatId, callerId, callerName, type }) => {
-            console.log('Incoming call from:', callerName);
+        const handleIncomingCall = async (payload: IncomingCallPayload) => {
+            console.log('Incoming call from:', payload.callerName);
 
             showCallNotification({
-                callerName,
-                chatId,
-                callType: type,
+                callerName: payload.callerName,
+                chatId: payload.chatId,
+                callType: payload.type,
                 onAccept: async () => {
                     try {
-                        // Request media permissions before accepting
                         const stream = await navigator.mediaDevices.getUserMedia({
                             audio: true,
-                            video: type === 'video'
+                            video: payload.type === 'video'
                         });
                         setLocalStream(stream);
 
-                        socket.emit('acceptCall', { chatId, callerId });
-                        socket.emit('joinCall', { chatId });
+                        socket.emit('acceptCall', { 
+                            chatId: payload.chatId, 
+                            callerId: payload.callerId 
+                        });
+                        socket.emit('joinCall', { chatId: payload.chatId });
 
                         setCurrentCall({
-                            chatId,
-                            type,
+                            chatId: payload.chatId,
+                            type: payload.type,
                             participants: [],
                             isInitiator: false
                         });
                     } catch (err) {
                         console.error('Failed to get media devices:', err);
-                        socket.emit('rejectCall', { chatId, callerId });
+                        socket.emit('rejectCall', { 
+                            chatId: payload.chatId, 
+                            callerId: payload.callerId 
+                        });
                     }
                 },
                 onReject: () => {
-                    socket.emit('rejectCall', { chatId, callerId });
+                    socket.emit('rejectCall', { 
+                        chatId: payload.chatId, 
+                        callerId: payload.callerId 
+                    });
                 },
             });
         };
 
-        const handleCallAccepted = ({ userId, username }) => {
-            console.log('Call accepted by:', username);
+        const handleCallAccepted = (payload: CallParticipantPayload) => {
             setCurrentCall(prev => {
                 if (!prev) return null;
                 return {
                     ...prev,
                     participants: [...prev.participants, {
-                        userId,
-                        username,
+                        userId: payload.userId,
+                        username: payload.username,
                         muted: false,
                         videoOff: false
                     }]
@@ -96,15 +144,10 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
         };
 
-        const handleCallRejected = ({ userId, username }) => {
-            console.log('Call rejected by:', username);
-            // You might want to show a notification here
-        };
-
-        const handleParticipantsUpdate = ({ participants }) => {
+        const handleParticipantsUpdate = (payload: ParticipantsUpdatePayload) => {
             setCurrentCall(prev => prev ? {
                 ...prev,
-                participants: participants.map(p => ({
+                participants: payload.participants.map(p => ({
                     ...p,
                     muted: false,
                     videoOff: false
@@ -112,21 +155,25 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } : null);
         };
 
+        // Socket event listeners
         socket.on('incomingCall', handleIncomingCall);
         socket.on('callAccepted', handleCallAccepted);
-        socket.on('callRejected', handleCallRejected);
+        socket.on('callRejected', (payload: CallParticipantPayload) => {
+            console.log('Call rejected by:', payload.username);
+        });
         socket.on('currentParticipants', handleParticipantsUpdate);
         socket.on('userJoined', handleCallAccepted);
-        socket.on('userLeft', ({ userId }) => {
+        socket.on('userLeft', (payload: UserLeftPayload) => {
             setCurrentCall(prev => {
                 if (!prev) return null;
                 return {
                     ...prev,
-                    participants: prev.participants.filter(p => p.userId !== userId)
+                    participants: prev.participants.filter(p => p.userId !== payload.userId)
                 };
             });
         });
 
+        // Cleanup function
         return () => {
             socket.off('incomingCall');
             socket.off('callAccepted');
@@ -137,16 +184,16 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [socket]);
 
+    // Call control functions with type safety
     const initiateCall = async (chatId: string, type: 'audio' | 'video'): Promise<boolean> => {
         try {
-            // Request media permissions before initiating
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
                 video: type === 'video'
             });
             setLocalStream(stream);
 
-            const response = await socket.emitWithAck('initiateCall', { chatId, type });
+            const response: CallResponsePayload = await socket.emitWithAck('initiateCall', { chatId, type });
 
             if (response.success) {
                 socket.emit('joinCall', { chatId });
@@ -159,7 +206,6 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return true;
             }
 
-            // If call initiation failed, cleanup stream
             stream.getTracks().forEach(track => track.stop());
             setLocalStream(null);
             return false;
@@ -173,13 +219,10 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const leaveCall = () => {
         if (currentCall) {
             socket.emit('leaveCall', { chatId: currentCall.chatId });
-
-            // Cleanup media stream
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 setLocalStream(null);
             }
-
             setCurrentCall(null);
         }
     };
@@ -234,7 +277,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 };
 
-export const useCall = () => {
+// Custom hook with type safety
+export const useCall = (): CallContextType => {
     const context = useContext(CallContext);
     if (context === undefined) {
         throw new Error('useCall must be used within a CallProvider');
