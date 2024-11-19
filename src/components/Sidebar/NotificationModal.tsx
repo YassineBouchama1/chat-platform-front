@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import Modal from '../Modal';
 import Button from '../Button';
 
-interface SettingsModalProps {
+interface NotificationModalProps {
     isOpen?: boolean;
     onClose: () => void;
 
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({
+const NotificationModal: React.FC<NotificationModalProps> = ({
     isOpen,
     onClose,
 
@@ -34,11 +34,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 text-gray-900
               '
                         >
-                            Profile
+                            Notifecations list
                         </h2>
-                        <p className='mt-1 text-sm leading-6 text-gray-600'>
-                            Edit your public information.
-                        </p>
+
 
 
 
@@ -58,13 +56,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <Button disabled={isLoading} secondary onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button disabled={isLoading} type='submit'>
-                        Save
-                    </Button>
+
                 </div>
             </form>
         </Modal>
     );
 };
 
-export default SettingsModal;
+export default NotificationModal;

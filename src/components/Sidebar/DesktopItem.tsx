@@ -1,18 +1,19 @@
 import clsx from 'clsx';
+import { IconType } from 'react-icons';
 import { Link } from 'react-router-dom';
 
 interface DesktopItemProps {
   label: string;
-  icon: any;
+  icon: IconType;
   href: string;
   onClick?: () => void;
   active?: boolean;
 }
 
-const DesktopItem: React.FC<DesktopItemProps> = ({ 
-  label, 
-  href, 
-  icon: Icon, 
+const DesktopItem: React.FC<DesktopItemProps> = ({
+  label,
+  href,
+  icon: Icon,
   active,
   onClick
 }) => {
@@ -22,7 +23,7 @@ const DesktopItem: React.FC<DesktopItemProps> = ({
     }
   };
 
-  return ( 
+  return (
     <li onClick={handleClick} key={label}>
       <Link
         to={href}
@@ -39,14 +40,14 @@ const DesktopItem: React.FC<DesktopItemProps> = ({
             hover:text-black 
             hover:bg-gray-100
           `,
-            active && 'bg-gray-100 text-black'
-          )}
+          active && 'bg-gray-100 text-black'
+        )}
       >
         <Icon className="h-6 w-6 shrink-0" aria-hidden="true" />
         <span className="sr-only">{label}</span>
       </Link>
     </li>
-   );
+  );
 }
- 
+
 export default DesktopItem;
